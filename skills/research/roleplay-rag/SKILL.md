@@ -133,6 +133,37 @@ o `consist.py`+canon é a verdade para factos antigos/duvidosos.
 **Regra de integridade:** nunca editar/reescrever linhas passadas do arquivo. Só append.
 É o teu registo fiel — qualquer alteração quebraria a história.
 
+## TIMELINE (archive.jsonl) vs FICHEIROS ORGANIZADOS — quem manda quando há contradição
+(corrigido 2026-08-08, incidente real: ver abaixo)
+
+O `archive.jsonl` é uma **timeline honesta**, não uma fonte de verdade infalível.
+Cada linha regista o que era canónico **no momento em que foi sincronizada** — texto
+puro, sem metadados de swipe misturados (mantém-se limpo para greps/`consist.py`).
+Mas o user pode re-swipar/regenerar uma mensagem DEPOIS de já ter sido sincronizada —
+o archive, sendo só-acrescenta e baseado em offset, nunca volta atrás para verificar.
+Fica uma "fotografia" de um momento que já não existe, e passa a contradizer os
+ficheiros organizados (`lorebooks/*.json`, `live_state.md`, `grupos.md`).
+
+**Ordem de confiança quando há conflito:**
+1. `lorebooks/<slug>.json` (`relacoes`) e `live_state.md` — **mandam sempre**. São
+   ficheiros curados, corrigíveis, e é para isso que existem.
+2. `canon/*.cleaned.jsonl` — verdade histórica consolidada.
+3. `archive.jsonl` — timeline crua, só usar para reconstituir cronologia/detalhe,
+   **nunca** para decidir um facto de identidade/relação que contradiga o nº 1.
+
+**Incidente real:** uma mensagem WhatsApp rotulou um contacto como "noiva da Mia"
+usando um nome (Catarina) que já era prima da Filipa Costa no canon — e nem sequer
+era a swipe final escolhida (o user regenerou depois). `mia.json` continuava correto
+(`Rita` = noiva). O erro só aconteceu porque o modelo confiou no "eco" da conversa
+recente em vez de verificar `relacoes` antes de escrever o rótulo (ver regra
+"VERIFICAR RÓTULOS DE RELAÇÃO" mais abaixo).
+
+**Correções sem violar o append-only:** `scripts/audit_stale_archive.py --ooc <id>
+--apply-corrections` compara o archive contra o estado atual das swipes do ST e
+acrescenta marcadores a `correcoes.jsonl` (mesma pasta do cenário) para linhas que já
+não batem com nada canónico — nunca edita/apaga `archive.jsonl`. Se encontrares uma
+linha do archive referenciada em `correcoes.jsonl`, trata-a como não-confiável.
+
 ## Registar uma nova conversa (quando o routing deteta um arranque novo)
 
 Cria um cenário novo **só** quando o routing justificar (first_message novo / contexto
