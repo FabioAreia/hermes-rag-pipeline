@@ -139,11 +139,28 @@ Cria um cenário novo **só** quando o routing justificar (first_message novo / 
 que não bate em nada). NUNCA criar por veres um nome/persona novo que já faz parte de
 uma conversa corrente.
 
-1. Inventa um `scenario_id` curto e descritivo (ex.: `peter-thomson-casa`).
-2. Cria `state/scenarios/<scenario_id>/` com `archive.jsonl` (vazio), um
-   `live_state.md` base e subpasta `facts/`.
-3. Adiciona uma linha em `state/scenarios/INDEX.md` (id, descrição, canon).
-4. A partir daí, todas as leituras/escritas usam **só** essa pasta.
+**IMPORTANTE (corrigido 2026-08-08):** o registo tem de passar SEMPRE por
+`rag_router.py --register`, nunca só por escrever `state/scenarios/INDEX.md` à mão.
+`INDEX.md` é só um índice humano — quem os scripts de sync/extract realmente leem é
+`/opt/data/cenarios.json`. Um cenário criado só no INDEX.md fica invisível para
+`archive_sync.py`/`extractor_grupos.py`: nunca sincroniza, nunca aparece na deteção
+automática. Já aconteceu (duas mecânicas de registo paralelas e desencontradas) — a
+partir de agora há um único caminho:
+
+1. `python3 /opt/data/rag_router.py --register "<nome exato do chat no ST>"` (ou, se
+   ambíguo, `--register` sozinho para o candidato mais recente). Isto cria a estrutura
+   toda de uma vez — `archive.jsonl`, `canon/` (vazio, aponta para um ficheiro que
+   ainda não existe até haver export limpo), `lorebooks/` (vazio), `grupos.md`,
+   `live_state.md` — e adiciona a entrada em `cenarios.json`, que é o que importa.
+2. Depois disso, acrescenta também uma linha em `state/scenarios/INDEX.md` (id,
+   descrição, canon) — só para leitura humana rápida, não é o que os scripts usam.
+3. A partir daí, todas as leituras/escritas usam **só** essa pasta — e o
+   `rag_router.py` deteta automaticamente qual está ativo pelo chat do ST mais
+   recentemente escrito, sem precisares de dizer `--ooc` outra vez.
+4. Um cenário novo nasce **sem canon** (normal — canon é o export limpo, só existe se
+   um dia quiseres consolidar). Até lá o RAG funciona só a partir do `archive.jsonl`
+   que vai crescer sync a sync. Ver `lorebook-authoring` (skill) para bootstrapping
+   dos ficheiros de personagem quando quiseres consistência mais forte desde cedo.
 
 **Nota:** o canon de cada cenário pode apontar para um ficheiro JSONL diferente, mas
 pre-flight/archive/live_state funcionam exatamente igual.
