@@ -80,6 +80,22 @@ Antes de CADA resposta de cena, faz em silêncio (nunca mostres ao user) a varre
 **Porquê:** o user apanhou erros (presenças erradas, inventar acontecimento fora do
 canon). Este passo existe para nunca escrever uma personagem sem saber quem ela é.
 
+**NUNCA declarar "esta personagem não existe no cenário" com base só numa busca
+vazia.** Incidente real (2026-08-08→09): pedido OOC sobre a Mia — 3 tentativas de
+`search_files` voltaram vazias/sem resultado (18 chars cada), e a resposta concluiu
+"não há nenhuma Mia no cenário ativo". Falso: a Mia está no `grupos.md`, GRUPO 1,
+linha 1 do ficheiro. `search_files` pode falhar ou não indexar bem sem avisar — não
+é prova de ausência.
+
+**Antes de dizer que uma personagem não existe:**
+1. `read_file` diretamente ao `grupos.md` do cenário (ficheiro pequeno, ~3-4KB,
+   custa pouco) — varre à mão a lista, não confies só numa busca por keyword.
+2. Se não estiver no `grupos.md`, `read_file` a `lorebooks/` (glob pelos ficheiros,
+   ou grep pelo nome nos `.json`) antes de concluir.
+3. Só depois de ler os dois diretamente (não só pesquisar) é que podes dizer ao user
+   "não encontro esta personagem no cenário — é de outro cenário ou preciso do nome
+   completo?". Uma busca vazia não é o mesmo que ter lido o ficheiro.
+
 ## ESTADO VIVO: histórico contínuo (obrigatório atualizar a cada cena)
 
 O `state/scenarios/<scenario_id>/live_state.md` (do cenário ativo) é o **histórico
