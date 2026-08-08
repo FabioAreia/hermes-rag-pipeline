@@ -1,0 +1,36 @@
+# Allow-list: tudo ignorado por defeito, so o codigo do pipeline RAG e destrancado.
+# NUNCA destrancar: .env, auth.json, config.yaml (tem API keys em texto simples),
+# *.db, cache, logs, sessions, e qualquer coisa em skills/**/state/ (conteudo
+# pessoal do roleplay: canon, archive, lorebooks de personagens).
+*
+
+!.gitignore
+!/extractor_grupos.py
+!/rag_router.py
+!/cenarios.json
+!/st_sync_DECISAO.md
+
+!/skills/
+!/skills/research/
+!/skills/research/roleplay-rag/
+!/skills/research/roleplay-rag/SKILL.md
+!/skills/research/roleplay-rag/scripts/
+!/skills/research/roleplay-rag/scripts/**
+!/skills/devops/
+!/skills/devops/sillytavern-rag-sync/
+!/skills/devops/sillytavern-rag-sync/SKILL.md
+!/skills/devops/sillytavern-rag-sync/references/
+!/skills/devops/sillytavern-rag-sync/references/**
+!/skills/content/
+!/skills/content/lorebook-authoring/
+!/skills/content/lorebook-authoring/SKILL.md
+!/_deprecated_skills_20260808/
+!/_deprecated_skills_20260808/**
+
+# reforcar exclusao de dados pessoais mesmo dentro de pastas destrancadas
+/skills/**/state/
+
+# contem uma cena explicita citada literalmente como fixture de teste - nunca commitar
+/skills/research/roleplay-rag/scripts/rebuild_archive.py
+# arquivo de teste orfao com 1 linha de dados de cenario - nao e codigo
+/_deprecated_skills_20260808/tyronne-lorebook-rag/

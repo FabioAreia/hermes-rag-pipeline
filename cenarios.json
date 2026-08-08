@@ -1,0 +1,14 @@
+{
+  "scenarios": {
+    "stacy-suzy-stepdad": {
+      "st_chat": "Stacy & Suzy as stepdad",
+      "st_container_file": "/home/node/app/data/lulzcz/chats/Stacy & Suzy as stepdad/",
+      "canon": "skills/research/roleplay-rag/state/scenarios/stacy-suzy-stepdad/canon/Stacy Suzy as Stepdad.cleaned.jsonl",
+      "archive": "skills/research/roleplay-rag/state/scenarios/stacy-suzy-stepdad/archive.jsonl",
+      "lorebooks": "skills/research/roleplay-rag/state/scenarios/stacy-suzy-stepdad/lorebooks",
+      "groups": "skills/research/roleplay-rag/state/scenarios/stacy-suzy-stepdad/grupos.md",
+      "live_state": "skills/research/roleplay-rag/state/scenarios/stacy-suzy-stepdad/live_state.md",
+      "min_co": 20
+    }
+  }
+}
