@@ -54,7 +54,7 @@ Cadence ~10 replies is fine; sync only batch-updates the graph, never corrupts.
 
 ## Scripts
 
-### `/media/sda/Scripts/archive_sync.py` (runs on the HOST)
+### `/media/sda/Scripts/sillytavern/archive_sync.py` (runs on the HOST)
 1. Resolves the active scenario from `cenarios.json` — `--ooc <id>` forces it,
    otherwise auto-detects by the most-recently-written ST chat. Never falls back
    to a hardcoded/shared scenario or lorebook folder (fixed 2026-08-08 — it used

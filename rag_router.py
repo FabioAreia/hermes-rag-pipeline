@@ -26,7 +26,7 @@ ST_CONTAINER = "sillytavern"
 # tem montado — `docker exec` daqui dentro falha sempre com "Cannot connect to
 # the Docker daemon"). Por isso o --sync tem de saltar por SSH para o host,
 # tal como _st_chats_atuais() já faz para listar os chats do ST.
-ARCHIVE_SYNC_HOST_PATH = "/media/sda/Scripts/archive_sync.py"
+ARCHIVE_SYNC_HOST_PATH = "/media/sda/Scripts/sillytavern/archive_sync.py"
 HOST_SSH = "fabio@172.17.0.1"
 
 def carregar_cenarios():
