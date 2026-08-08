@@ -304,5 +304,31 @@ Marta" aparece em dois círculos diferentes). Para não cruzar pessoas erradas:
 5. Este passo é obrigatório no pre-flight sempre que o texto traga 1º nomes repetidos
    entre grupos.
 
+## VERIFICAR RÓTULOS DE RELAÇÃO ANTES DE ESCREVER (crítico — incidente real 2026-08-08)
+
+Nunca escrever um rótulo de relação — `(Noiva de X)`, `(Irmã de X)`, `(Namorada de X)`,
+nomes de contacto WhatsApp, etc. — sem confirmar contra o `relacoes` já estabelecido
+da personagem em `lorebooks/<slug>.json`. Um rótulo novo que contradiz uma relação já
+confirmada é um facto inventado, mesmo que soe natural na cena.
+
+**O que aconteceu:** uma cena rotulou um contacto WhatsApp como "Catarina Sousa
+(Noiva da Mia)". Mas `mia.json` já tinha `romanticos: {"Rita": "noiva (fachada
+lésbica)"}` — a noiva estabelecida da Mia é a Rita, não a Catarina. Pior: a Catarina
+já existia no canon como **prima da Filipa Costa** (23 anos, enfermagem, virgem),
+sem qualquer ligação à Mia. O RAG disparou nessa cena (5 tool calls, ficheiros lidos)
+mas o resultado final contradisse o canon na mesma. Ter disparado não é garantia de
+ter verificado o campo certo.
+
+**Regra:** antes de escrever QUALQUER rótulo `(<Relação> de <Nome>)`:
+1. Abre `lorebooks/<slug_do_Nome>.json` e olha o campo `relacoes.romanticos` (ou o
+   tipo relevante) — se já lá está uma pessoa diferente com esse tipo de relação,
+   o rótulo novo está errado. Não escrevas por cima sem o user resolver.
+2. Se a personagem que vais rotular já tem um `role`/perfil estabelecido no canon
+   (ex.: "prima de X") que não bate com o rótulo que estás prestes a escrever, para
+   e usa o papel já estabelecido, não o que "soa bem" na cena.
+3. Se genuinamente for uma reviravolta nova da história (ex.: a Rita deixou de ser
+   noiva, entra uma noiva nova), isso é uma decisão do user — não decidas sozinho
+   ao escrever um nome de contacto; confirma OOC antes ou marca claramente a
+   inconsistência em vez de a apagar silenciosamente.
 
 
