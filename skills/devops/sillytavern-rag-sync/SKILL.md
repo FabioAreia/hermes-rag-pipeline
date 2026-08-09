@@ -108,6 +108,20 @@ amizades/trabalho/habitação/hobby/grupos/conhecidos).
   warnings after `--apply`, the guessed relations may be misattributed.
 - Always back up the scenario's `lorebooks/` folder before `--apply` (copy dir to
   a dated backup).
+- **`historial_sexual` (added 2026-08-09)**: no mesmo passe, deteta atos sexuais
+  confirmados (`anal`/`vaginal`/`oral`) por janela dupla (gatilho + verbo de ação
+  no mesmo bloco de 60/120 chars — nunca por proximidade solta) e escreve
+  `parceiros` + `actos_confirmados` (append, dedup por tipo+parceiro+data, nunca
+  reescreve o que já lá estava). Antes disto o campo era só escrito uma vez à mão
+  (`lorebook-authoring`) e nunca mais atualizado — ficava congelado enquanto
+  `relacoes` já se atualizava sozinho a cada sync.
+  - **`virgindade` NUNCA é escrita por `--apply`** — testado: até um "hub" claramente
+    não-virgem (ex. o padrasto/protagonista masculino) dispara o gatilho quando OUTRA
+    personagem perde a virgindade na mesma cena perto do nome dele. Fica só como
+    sugestão no `--report` ("candidato a primeira vez"), confirmação manual sempre.
+  - Nem o sujeito nem o parceiro de um ato podem vir de um fallback ambíguo (1º nome
+    sem apelido) — testado: sem este filtro, a colisão Sofia/Marta contaminava
+    `historial_sexual` com parceiros de círculos sociais errados.
 
 ### `/opt/data/rag_router.py` + `/opt/data/cenarios.json`
 Routes WHICH scenario to work on:

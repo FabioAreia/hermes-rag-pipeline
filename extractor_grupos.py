@@ -45,6 +45,28 @@ TERMOS_TIPO = {
               "malhar", "musculação", "musculacao", "spa", "massagem", "aula de"],
 }
 
+# Deteção de atos sexuais confirmados — evidência FORTE e dupla (gatilho + verbo de
+# ação no MESMO bloco), nunca por proximidade solta. Preferir não detetar a inventar
+# historial sexual falso (pior que não ter nada — ver incidente Catarina 2026-08-08).
+ACT_PATTERNS = {
+    "primeira_vez": {
+        "gatilho": r"\b(virgem|hímen|himen|era zero|nunca teve|nunca tive)\b",
+        "confirmacao": r"\b(entra|entrou|meter|meteu|penetr|rasgou|rompeu|desliz)\b",
+    },
+    "anal": {
+        "gatilho": r"\b(cu|rabo|anal)\b",
+        "confirmacao": r"\b(entra|entrou|meter|meteu|penetr|abrir|abriu|deslizou|desliza|enterra|empurra)\b",
+    },
+    "vaginal": {
+        "gatilho": r"\b(cona|vagina|buceta|racha|fenda|coninha)\b",
+        "confirmacao": r"\b(entra|entrou|meter|meteu|penetr|fode|fodeu|foder|desliz)\b",
+    },
+    "oral": {
+        "gatilho": r"\b(chupar|chupou|mamar|mamou|sugar|boquete)\b",
+        "confirmacao": None,  # já é auto-confirmatório, não precisa de segunda verificação
+    },
+}
+
 def carregar_lore(dir_):
     """Devolve: por chave (primeiro nome) -> lista de (nome_completo, dict)."""
     pessoas = []
@@ -101,6 +123,8 @@ def main():
     by_nome = {p["nome_full"].lower(): p for p in pessoas}
 
     def _ler(fonte):
+        """Devolve lista de (header, mes) — header extraído do início da mensagem
+        (**Dia - AAAA-MM-DD HH:MM – Local**) se houver, para datar eventos sexuais."""
         out = []
         if not fonte or not os.path.exists(fonte):
             return out
@@ -111,7 +135,13 @@ def main():
                 try: d = json.loads(line)
                 except Exception: continue
                 mes = d.get("mes", "")
-                if mes: out.append(mes)
+                if not mes: continue
+                header = d.get("header", "")
+                if not header:
+                    first = mes.strip().split("\n", 1)[0]
+                    if first.startswith("**") and first.endswith("**"):
+                        header = first
+                out.append((header, mes))
         return out
 
     mensagens = _ler(canon) + _ler(archive)
@@ -125,14 +155,17 @@ def main():
     coco = defaultdict(Counter)
     coco_tipo = {t: defaultdict(Counter) for t in TERMOS_TIPO}
     ambiguous_fallbacks = Counter()  # colisões de 1º nome sem apelido visível na mensagem
+    # eventos sexuais confirmados: pessoa -> lista de (tipo, parceiro_ou_None, header)
+    sexual_events = defaultdict(list)
 
     by_primeiro = defaultdict(list)
     for p in pessoas:
         by_primeiro[p["nome_full"].split()[0].lower()].append(p)
 
-    for mes in mensagens:
+    for header, mes in mensagens:
         low = mes.lower()
         presentes = set()
+        presentes_ambiguas = set()  # resolvidas por fallback — nunca usar como parceiro sexual
         for pn, plist in by_primeiro.items():
             if re.search(r"\b" + re.escape(pn) + r"\b", low):
                 if len(plist) == 1:
@@ -150,6 +183,7 @@ def main():
                         # — regista como ambíguo (visível no relatório) em vez de
                         # assumir silenciosamente que é sempre a mesma pessoa.
                         presentes.add(plist[0]["nome_full"])
+                        presentes_ambiguas.add(plist[0]["nome_full"])
                         ambiguous_fallbacks[pn] += 1
         pl = list(presentes)
         for p in pl:
@@ -173,6 +207,22 @@ def main():
                         for outro2 in para_esta:
                             coco_tipo[tipo][p][outro2] += 1
                             coco_tipo[tipo][outro2][p] += 1
+                # deteção de atos sexuais — exige gatilho E confirmação no MESMO
+                # bloco (janela de 60/120 chars). Parceiro só atribuído se houver
+                # exatamente UMA outra pessoa na janela — ambíguo (0 ou 2+) é
+                # ignorado, não adivinhado (mesma filosofia do resto do script).
+                # Nem o sujeito nem o parceiro podem vir de um fallback ambíguo
+                # (1º nome sem apelido visível) — um facto sexual errado por causa
+                # de "Marta"/"Sofia" mal resolvida é pior que um "conhecidos" errado.
+                if p not in presentes_ambiguas:
+                    for act_tipo, pat in ACT_PATTERNS.items():
+                        if not re.search(pat["gatilho"], ja):
+                            continue
+                        if pat["confirmacao"] and not re.search(pat["confirmacao"], ja):
+                            continue
+                        candidatos_parceiro = para_esta - presentes_ambiguas
+                        parceiro = next(iter(candidatos_parceiro)) if len(candidatos_parceiro) == 1 else None
+                        sexual_events[p].append((act_tipo, parceiro, header))
 
     # ---- 2. relatório ----
     print("Pessoas indexadas:", len(pessoas))
@@ -204,6 +254,35 @@ def main():
         for outro, info in sorted(rel.items(), key=lambda x: -x[1]["forca"])[:10]:
             print(f"    -> {outro} (co: {info['forca']}, tipos: {','.join(info['tipos'])})")
 
+    # dedupe de eventos sexuais: a mesma cena pode disparar o mesmo (tipo, parceiro,
+    # header) várias vezes (nome mencionado 2x na mensagem) — não é 2 atos, é 1.
+    sexual_updates = {}
+    for nome_full, eventos in sexual_events.items():
+        vistos = set()
+        deduped = []
+        for tipo, parceiro, header in eventos:
+            chave = (tipo, parceiro, header)
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            deduped.append({"tipo": tipo, "parceiro": parceiro, "data": header})
+        if deduped:
+            sexual_updates[nome_full] = deduped
+
+    if sexual_updates:
+        print(f"\n--- eventos sexuais detetados ({sum(len(v) for v in sexual_updates.values())} no total) ---")
+        for nome_full in sorted(sexual_updates):
+            print(f"### {nome_full}")
+            for ev in sexual_updates[nome_full][:15]:
+                parceiro_str = ev["parceiro"] or "(parceiro não identificado — ambíguo, ignorado no historial)"
+                print(f"    -> {ev['tipo']} com {parceiro_str} | {ev['data']}")
+        pv_candidatos = [(n, e) for n, evs in sexual_updates.items() for e in evs if e["tipo"] == "primeira_vez"]
+        if pv_candidatos:
+            print(f"\n[VIRGINDADE — confirmação manual obrigatória, NUNCA escrita por --apply]")
+            for nome_full, ev in pv_candidatos:
+                parceiro_str = ev["parceiro"] or "parceiro não identificado (provável falso positivo — verificar)"
+                print(f"    {nome_full}: candidato a primeira vez com {parceiro_str} | {ev['data']}")
+
     if ambiguous_fallbacks:
         total_amb = sum(ambiguous_fallbacks.values())
         print(f"\n[AVISO] {total_amb} deteções ambíguas (1º nome partilhado, sem "
@@ -216,35 +295,68 @@ def main():
 
     # ---- 3. apply ----
     if modo == "apply":
-        for nome_full, rel in updates.items():
+        pessoas_a_atualizar = set(updates) | set(sexual_updates)
+        n_sexual = 0
+        for nome_full in pessoas_a_atualizar:
             p = by_nome.get(nome_full.lower())
             if not p: continue
-            novo_rel = {
-                "parentesco": {}, "romanticos": {}, "amizades": {},
-                "trabalho": {}, "habitacao": {}, "hobby": {},
-                "grupos": [], "conhecidos": [], "inimigos": [],
-            }
-            for outro, info in rel.items():
-                for t in info["tipos"]:
-                    if t == "amizades": novo_rel["amizades"][outro] = "amiga/colega"
-                    elif t == "romanticos": novo_rel["romanticos"][outro] = "amante/parceira"
-                    elif t == "parentesco": novo_rel["parentesco"][outro] = "familiar"
-                    elif t == "trabalho": novo_rel["trabalho"][outro] = "colega de trabalho"
-                    elif t == "habitacao": novo_rel["habitacao"][outro] = "colega de casa"
-                    elif t == "hobby": novo_rel["hobby"][outro] = "partilha hobby"
-                    elif t == "conhecidos": novo_rel["conhecidos"].append(outro)
-            rel_ant = p["d"].get("relacoes", {})
-            if isinstance(rel_ant, dict):
-                for k in ("parentesco", "romanticos", "amizades", "trabalho", "habitacao", "hobby"):
-                    novo_rel[k].update(rel_ant.get(k, {}) or {})
-                novo_rel["grupos"] = list(dict.fromkeys((rel_ant.get("grupos", []) or []) + novo_rel["grupos"]))
-                novo_rel["conhecidos"] = list(dict.fromkeys((rel_ant.get("conhecidos", []) or []) + novo_rel["conhecidos"]))
-            p["d"]["relacoes"] = novo_rel
+
+            if nome_full in updates:
+                rel = updates[nome_full]
+                novo_rel = {
+                    "parentesco": {}, "romanticos": {}, "amizades": {},
+                    "trabalho": {}, "habitacao": {}, "hobby": {},
+                    "grupos": [], "conhecidos": [], "inimigos": [],
+                }
+                for outro, info in rel.items():
+                    for t in info["tipos"]:
+                        if t == "amizades": novo_rel["amizades"][outro] = "amiga/colega"
+                        elif t == "romanticos": novo_rel["romanticos"][outro] = "amante/parceira"
+                        elif t == "parentesco": novo_rel["parentesco"][outro] = "familiar"
+                        elif t == "trabalho": novo_rel["trabalho"][outro] = "colega de trabalho"
+                        elif t == "habitacao": novo_rel["habitacao"][outro] = "colega de casa"
+                        elif t == "hobby": novo_rel["hobby"][outro] = "partilha hobby"
+                        elif t == "conhecidos": novo_rel["conhecidos"].append(outro)
+                rel_ant = p["d"].get("relacoes", {})
+                if isinstance(rel_ant, dict):
+                    for k in ("parentesco", "romanticos", "amizades", "trabalho", "habitacao", "hobby"):
+                        novo_rel[k].update(rel_ant.get(k, {}) or {})
+                    novo_rel["grupos"] = list(dict.fromkeys((rel_ant.get("grupos", []) or []) + novo_rel["grupos"]))
+                    novo_rel["conhecidos"] = list(dict.fromkeys((rel_ant.get("conhecidos", []) or []) + novo_rel["conhecidos"]))
+                p["d"]["relacoes"] = novo_rel
+
+            eventos_novos = sexual_updates.get(nome_full)
+            if eventos_novos:
+                hs = p["d"].get("historial_sexual")
+                if not isinstance(hs, dict):
+                    hs = {}
+                # virgindade NUNCA é escrita automaticamente — é um facto único e
+                # definitivo demais para arriscar um falso positivo (testado: um "hub"
+                # como o Tyronne, claramente não-virgem, também dispara o gatilho
+                # quando outra personagem perde a virgindade na mesma cena). Fica só
+                # como sugestão no --report; confirmação manual obrigatória.
+                parceiros_existentes = set(hs.get("parceiros") or [])
+                parceiros_novos = {e["parceiro"] for e in eventos_novos if e["parceiro"]}
+                if parceiros_novos:
+                    hs["parceiros"] = sorted(parceiros_existentes | parceiros_novos)
+                # actos_confirmados: junta aos existentes só o que é genuinamente novo
+                # (dedup por tipo+parceiro+data) — nunca reescreve o que já lá estava.
+                existentes = hs.get("actos_confirmados") or []
+                chaves_existentes = {(e.get("tipo"), e.get("parceiro"), e.get("data")) for e in existentes}
+                novos_actos = [e for e in eventos_novos
+                               if (e["tipo"], e["parceiro"], e["data"]) not in chaves_existentes]
+                if novos_actos:
+                    hs["actos_confirmados"] = existentes + novos_actos
+                p["d"]["historial_sexual"] = hs
+                n_sexual += 1
+
             with open(p["file"], "w") as f:
                 json.dump(p["d"], f, ensure_ascii=False, indent=2)
-        print(f"\n[APPLY] atualizados {len(updates)} lorebooks.")
+        print(f"\n[APPLY] atualizados {len(pessoas_a_atualizar)} lorebooks "
+              f"({len(updates)} com relações, {n_sexual} com historial sexual).")
     else:
-        print(f"\n[REPORT] {len(updates)} pessoas com relações projetadas. Rode com --apply para gravar.")
+        print(f"\n[REPORT] {len(updates)} pessoas com relações projetadas, "
+              f"{len(sexual_updates)} com eventos sexuais. Rode com --apply para gravar.")
 
 if __name__ == "__main__":
     main()
